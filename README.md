@@ -115,6 +115,46 @@ actively misleading. On Tox21 the baseline's PR-AUC equals the active rate
 (0.079 random, 0.105 scaffold), which is exactly what a random ranker scores,
 and the best model's 0.401 is roughly four times that.
 
+### The shipped models
+
+`make train` selects a configuration on the scaffold-split **validation** set,
+scores it once on the untouched **test** set, then refits on all data. Those
+test scores are what the API's `/models` route reports:
+
+| Endpoint | Selected model | Held-out test performance |
+|---|---|---|
+| Solubility | Gradient boosting, fingerprints + descriptors | RMSE **0.832**, MAE 0.642, R² **0.828**, 81% of predictions within ±1 log unit (n = 113) |
+| Tox21 | Random forest, descriptors | Mean ROC-AUC **0.790** across 12 assays (n = 801) |
+
+These beat the benchmark table above for a mundane reason: the benchmark trains
+on 80% of the data, while the production model trains on train plus validation
+(90%). Same test molecules, more chemistry seen.
+
+Per-assay Tox21 results, sorted by difficulty:
+
+| Assay | What it measures | Active rate | ROC-AUC | PR-AUC |
+|---|---|---|---|---|
+| SR-MMP | Mitochondrial membrane potential | 21.6% | 0.869 | 0.619 |
+| NR-AhR | Aryl hydrocarbon receptor | 15.6% | 0.852 | 0.610 |
+| NR-AR-LBD | Androgen receptor (ligand-binding domain) | 3.3% | 0.836 | 0.452 |
+| SR-p53 | p53 stress response | 10.8% | 0.810 | 0.332 |
+| NR-Aromatase | Aromatase inhibition | 9.1% | 0.805 | 0.462 |
+| SR-ATAD5 | Genotoxicity | 5.2% | 0.789 | 0.223 |
+| SR-ARE | Antioxidant response | 24.5% | 0.784 | 0.547 |
+| NR-ER-LBD | Estrogen receptor (ligand-binding domain) | 4.3% | 0.784 | 0.312 |
+| NR-PPAR-gamma | PPAR-gamma | 5.5% | 0.783 | 0.374 |
+| SR-HSE | Heat-shock response | 7.0% | 0.745 | 0.259 |
+| NR-AR | Androgen receptor | 4.7% | 0.731 | 0.411 |
+| NR-ER | Estrogen receptor | 14.7% | 0.697 | 0.410 |
+
+The spread is informative and isn't explained by class imbalance: NR-AhR and
+NR-ER have similar active rates (15.6% and 14.7%) but differ by 0.155 ROC-AUC.
+Assays near the top tend to be broad cellular-stress readouts, which track bulk
+properties such as lipophilicity that descriptors capture well. Assays near the
+bottom depend on specific binding geometry in a receptor pocket, which 2D
+descriptors cannot represent. Those are the endpoints where a graph neural
+network or a docking-based feature would be worth trying.
+
 Reproduce with `make benchmark && make train` (30-60 minutes). Numbers were
 produced with Python 3.14, RDKit 2026.09.1 and scikit-learn 1.9.1; small
 variations across library versions are expected. CI runs a shortened benchmark
