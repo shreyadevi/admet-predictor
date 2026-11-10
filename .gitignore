@@ -1,0 +1,19 @@
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+build/
+dist/
+
+# Trained models are rebuilt with `admet train` (and inside Docker)
+models/
+
+# Raw benchmark output and run logs; commit the summary files in reports/ instead
+reports/benchmark_raw.csv
+reports/train.log
+
+.DS_Store
+.vscode/
+.idea/
